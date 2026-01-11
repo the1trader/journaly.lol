@@ -1,87 +1,106 @@
 'use client'
 
 import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/utils/supabase/client'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import Link from 'next/link'
 
-export function AuthForm() {
-  const [loading, setLoading] = useState(false)
+export default function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+  const supabase = createClient()
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setError(null)
 
-    try {
-      if (mode === 'login') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-      } else {
-        const { error } = await supabase.auth.signUp({ email, password })
-        if (error) throw error
-        alert('Check your email for the confirmation link!')
-      }
-      window.location.reload()
-    } catch (error: any) {
-      alert(error.message)
-    } finally {
+    const { error } = mode === 'login' 
+      ? await supabase.auth.signInWithPassword({ email, password })
+      : await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
+          }
+        })
+
+    if (error) {
+      setError(error.message)
       setLoading(false)
+    } else {
+      router.push('/')
+      router.refresh()
     }
   }
 
   return (
-    <div className="max-w-md mx-auto p-8 bg-white rounded-2xl shadow-xl border border-slate-100">
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-black text-slate-900 uppercase tracking-tight">
-          {mode === 'login' ? 'Welcome Back' : 'Join Journaly'}
-        </h2>
-        <p className="text-slate-500 mt-2 font-medium">
-          {mode === 'login' ? 'Sign in to access your journal' : 'Start your disciplined trading journey'}
-        </p>
-      </div>
-
-      <form onSubmit={handleAuth} className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-4 bg-slate-50 border-none rounded-xl font-bold focus:ring-2 focus:ring-slate-900 transition-all"
-            placeholder="name@example.com"
-            required
-          />
-        </div>
-        <div className="space-y-2">
-          <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-4 bg-slate-50 border-none rounded-xl font-bold focus:ring-2 focus:ring-slate-900 transition-all"
-            placeholder="••••••••"
-            required
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-slate-950 text-white py-4 rounded-xl font-black text-lg hover:bg-black transition-all active:scale-[0.98] disabled:opacity-50 mt-4 shadow-lg shadow-slate-200"
-        >
-          {loading ? 'Processing...' : mode === 'login' ? 'Sign In' : 'Create Account'}
-        </button>
-      </form>
-
-      <div className="mt-8 text-center">
-        <button
-          onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
-          className="text-sm font-bold text-slate-500 hover:text-slate-950 transition-colors"
-        >
-          {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-        </button>
-      </div>
+    <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>{mode === 'login' ? 'Login' : 'Sign Up'}</CardTitle>
+          <CardDescription>
+            {mode === 'login' 
+              ? 'Enter your email to sign in to your trade journal.' 
+              : 'Create an account to start journaling your trades.'}
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleAuth}>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input 
+                id="email" 
+                type="email" 
+                placeholder="name@example.com" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input 
+                id="password" 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required 
+              />
+            </div>
+            {error && <p className="text-sm text-red-500">{error}</p>}
+          </CardContent>
+          <CardFooter className="flex flex-col space-y-4">
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? 'Processing...' : mode === 'login' ? 'Login' : 'Sign Up'}
+            </Button>
+            <div className="text-sm text-center">
+              {mode === 'login' ? (
+                <>
+                  Don't have an account?{' '}
+                  <Link href="/signup" className="text-blue-600 hover:underline">
+                    Sign Up
+                  </Link>
+                </>
+              ) : (
+                <>
+                  Already have an account?{' '}
+                  <Link href="/login" className="text-blue-600 hover:underline">
+                    Login
+                  </Link>
+                </>
+              )}
+            </div>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   )
 }
