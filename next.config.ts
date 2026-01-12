@@ -1,15 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'export',
-  trailingSlash: true,
+  // Remove output: 'export' to enable API routes and Middleware
   images: {
     unoptimized: true,
   },
-  // Skip problematic routes for static export
-  generateBuildId: async () => {
-    return 'build-' + Date.now()
-  },
+  // We need this for the MySQL compatibility if still using it
+  serverExternalPackages: ['mysql2'],
 };
 
 export default nextConfig;
